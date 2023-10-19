@@ -7,19 +7,25 @@ import numpy as np
 
 frameworks = [
     'pytorch',
-    'tensorflow',
-    'caffe2'
 ]
 
 models = [
     'vgg16',
     'resnet152',
-    'densenet161'
+    'densenet161',
+    'swin_big',
+    'vit_b_14',
+    'convnext_large'
 ]
 
 precisions = [
     'fp32',
     'fp16'
+]
+batchsizes = [
+    16,
+    32,
+    64
 ]
 
 class Benchmark():
@@ -45,16 +51,13 @@ class Benchmark():
         for precision in precisions:
             results[precision] = []
             for model in models:
-                if model == 'densenet161' and framework != 'pytorch':
-                    eval_duration = 0
-                    train_duration = 0
-                else:
-                    eval_duration = self.benchmark_model('eval', framework, model, precision)
-                    train_duration = self.benchmark_model('train', framework, model, precision)
-                print("{}'s {} eval at {}: {}ms avg".format(framework, model, precision, round(eval_duration, 1)))
-                print("{}'s {} train at {}: {}ms avg".format(framework, model, precision, round(train_duration, 1)))
-                results[precision].append(eval_duration)
-                results[precision].append(train_duration)
+                for batchsize in batchsizes:
+                    eval_duration = self.benchmark_model('eval', framework, model, precision,batch_size=batch_size)
+                    train_duration = self.benchmark_model('train', framework, model, precision,batch_size=batch_size)
+                    print("{}'s {} eval at {}: {}ms avg".format(framework, model, precision, round(eval_duration, 1)))
+                    print("{}'s {} train at {}: {}ms avg".format(framework, model, precision, round(train_duration, 1)))
+                    results[precision].append(eval_duration)
+                    results[precision].append(train_duration)
 
         return results
 
