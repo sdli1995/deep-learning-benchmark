@@ -5,9 +5,53 @@ import pickle
 
 import numpy as np
 
-frameworks = [
-    'pytorch',
-]
+from time import time
+
+import torch
+# this turns on auto tuner which optimizes performance
+torch.backends.cudnn.benchmark = True
+import torchvision
+print('GPU name=', torch.cuda.get_device_name())
+print('cuda version=', torch.version.cuda)
+print('cudnn version=', torch.backends.cudnn.version())
+
+class pytorch_base:
+
+    def __init__(self, model_name, precision, image_shape, batch_size):
+        self.model = getattr(torchvision.models, model_name)().cuda() if precision == 'fp32' \
+            else getattr(torchvision.models, model_name)().cuda().half()
+        x = torch.rand(batch_size, 3, image_shape[0], image_shape[1]).cuda()
+        self.eval_input = x if precision == 'fp32' else x.half()
+        self.train_input = x if precision == 'fp32' else x.half()
+
+    def eval(self, num_iterations, num_warmups):
+        self.model.eval()
+        durations = []
+        for i in range(num_iterations + num_warmups):
+            torch.cuda.synchronize()
+            t1 = time()
+            self.model(self.eval_input)
+            torch.cuda.synchronize()
+            t2 = time()
+            if i >= num_warmups:
+                durations.append(t2 - t1)
+        return durations
+
+    def train(self, num_iterations, num_warmups):
+        self.model.train()
+        durations = []
+        for i in range(num_iterations + num_warmups):
+            torch.cuda.synchronize()
+            t1 = time()
+            self.model.zero_grad()
+            out = self.model(self.train_input)
+            loss = out.sum()
+            loss.backward()
+            torch.cuda.synchronize()
+            t2 = time()
+            if i >= num_warmups:
+                durations.append(t2 - t1)
+        return durations
 
 models = [
     'vgg16',
@@ -31,50 +75,33 @@ batchsizes = [
 
 class Benchmark():
 
-    def get_framework_model(self, framework, model):
-        framework_model = import_module('.'.join(['frameworks', framework, 'models']))
-        return getattr(framework_model, model)
-
-    def benchmark_model(self, mode, framework, model, precision, image_shape=(224, 224), batch_size=16, num_iterations=20, num_warmups=20):
-        framework_model = self.get_framework_model(framework, model)(precision, image_shape, batch_size)
+ 
+    def benchmark_model(self, mode, framework, model, precision, image_shape=(224, 224), batch_size=16, num_iterations=10, num_warmups=20):
+        framework_model = pytorch_base(model, precision, image_shape, batch_size)
         durations = framework_model.eval(num_iterations, num_warmups) if mode == 'eval' else framework_model.train(num_iterations, num_warmups)
         durations = np.array(durations)
         return durations.mean() * 1000
 
-    def benchmark_all(self):
-        results = OrderedDict()
-        for framework in frameworks:
-            results[framework] = self.benchmark_framework(framework)
-        return results
-
-    def benchmark_framework(self, framework):
+    def benchmark_framework(self,):
         results = OrderedDict()
         for precision in precisions:
             results[precision] = []
             for model in models:
                 for batchsize in batchsizes:
-                    eval_duration = self.benchmark_model('eval', framework, model, precision,batch_size=batchsize)
-                    train_duration = self.benchmark_model('train', framework, model, precision,batch_size=batchsize)
-                    print("{}'s batch-size {} {} eval at {}: {}ms avg".format(framework,batchsize, model, precision, round(eval_duration, 1)))
-                    print("{}'s batch-size {} {} train at {}: {}ms avg".format(framework,batchsize, model, precision, round(train_duration, 1)))
+                    eval_duration = self.benchmark_model('eval', 'pytorch', model, precision,batch_size=batchsize)
+                    train_duration = self.benchmark_model('train', 'pytorch', model, precision,batch_size=batchsize)
+                    print("{}'s batch-size {} {} eval at {}: {}ms avg, train at {}: {}ms avg".\
+                            format('pytorch',batchsize, model, precision, round(eval_duration, 1),precision, round(train_duration, 1)))
                     results[precision].append(eval_duration)
                     results[precision].append(train_duration)
 
         return results
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', dest='framework', required=False)
-    args = parser.parse_args()
+    results = Benchmark().benchmark_framework()
+    pickle.dump(results, open('{}_results.pkl'.format(args.framework), 'wb'))
 
-    if args.framework:
-        print('running benchmark for framework', args.framework)
-        results = Benchmark().benchmark_framework(args.framework)
-        pickle.dump(results, open('{}_results.pkl'.format(args.framework), 'wb'))
-    else:
-        print('running benchmark for frameworks', frameworks)
-        results = Benchmark().benchmark_all()
-        pickle.dump(results, open('all_results.pkl', 'wb'))
+ 
 
 
 
