@@ -4,7 +4,7 @@ import torch
 # this turns on auto tuner which optimizes performance
 torch.backends.cudnn.benchmark = True
 import torchvision
-
+print('GPU name=', torch.cuda.get_device_name())
 print('cuda version=', torch.version.cuda)
 print('cudnn version=', torch.backends.cudnn.version())
 
@@ -13,11 +13,9 @@ class pytorch_base:
     def __init__(self, model_name, precision, image_shape, batch_size):
         self.model = getattr(torchvision.models, model_name)().cuda() if precision == 'fp32' \
             else getattr(torchvision.models, model_name)().cuda().half()
-        x = torch.rand(batch_size, 3, image_shape[0], image_shape[1])
-        self.eval_input = torch.autograd.Variable(x, volatile=True).cuda() if precision == 'fp32' \
-            else torch.autograd.Variable(x, volatile=True).cuda().half()
-        self.train_input = torch.autograd.Variable(x, requires_grad=True).cuda() if precision == 'fp32' \
-            else torch.autograd.Variable(x, requires_grad=True).cuda().half()
+        x = torch.rand(batch_size, 3, image_shape[0], image_shape[1]).cuda()
+        self.eval_input = x if precision == 'fp32' else x.half()
+        self.train_input = x if precision == 'fp32' else x.half()
 
     def eval(self, num_iterations, num_warmups):
         self.model.eval()
@@ -60,8 +58,25 @@ class resnet152(pytorch_base):
     super().__init__('resnet152', precision, image_shape, batch_size)
 
 
-class densenet161(pytorch_base):
+class convnext_large(pytorch_base):
 
   def __init__(self, precision, image_shape, batch_size):
-    super().__init__('densenet161', precision, image_shape, batch_size)
+    super().__init__('convnext_large', precision, image_shape, batch_size)
+
+class swin_b(pytorch_base):
+
+  def __init__(self, precision, image_shape, batch_size):
+    super().__init__('swin_b', precision, image_shape, batch_size)
+
+
+class vit_b_32(pytorch_base):
+
+  def __init__(self, precision, image_shape, batch_size):
+    super().__init__('vit_b_32', precision, image_shape, batch_size)
+
+
+class resnext101_64x4d(pytorch_base):
+
+  def __init__(self, precision, image_shape, batch_size):
+    super().__init__('resnext101_64x4d', precision, image_shape, batch_size)
 
