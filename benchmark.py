@@ -13,9 +13,10 @@ models = [
     'vgg16',
     'resnet152',
     'densenet161',
-    'swin_big',
-    'vit_b_14',
-    'convnext_large'
+    'swin_b',
+    'vit_b_32',
+    'convnext_large',
+    'resnext101_64x4d'
 ]
 
 precisions = [
