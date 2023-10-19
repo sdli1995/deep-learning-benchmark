@@ -53,10 +53,10 @@ class Benchmark():
             results[precision] = []
             for model in models:
                 for batchsize in batchsizes:
-                    eval_duration = self.benchmark_model('eval', framework, model, precision,batch_size=batch_size)
-                    train_duration = self.benchmark_model('train', framework, model, precision,batch_size=batch_size)
-                    print("{}'s {} eval at {}: {}ms avg".format(framework, model, precision, round(eval_duration, 1)))
-                    print("{}'s {} train at {}: {}ms avg".format(framework, model, precision, round(train_duration, 1)))
+                    eval_duration = self.benchmark_model('eval', framework, model, precision,batch_size=batchsize)
+                    train_duration = self.benchmark_model('train', framework, model, precision,batch_size=batchsize)
+                    print("{}'s batch-size {} {} eval at {}: {}ms avg".format(framework,batchsize, model, precision, round(eval_duration, 1)))
+                    print("{}'s batch-size {} {} train at {}: {}ms avg".format(framework,batchsize, model, precision, round(train_duration, 1)))
                     results[precision].append(eval_duration)
                     results[precision].append(train_duration)
 
